@@ -29,13 +29,29 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         order_detail.save()
         return order_detail
 
+    def update(self, instance, validated_data):
+        product = validated_data['product']
+        quantity = validated_data['quantity']
+        price = product.price * quantity
+        instance.quantity = quantity
+        instance.price = price
+        instance.save()
+        return instance
+
     def validate(self, data):
-        # this validation runs automatically before the create method
-        # validates that the product doesn't already exists on another orderDetail of the same order
+        # this validation runs automatically before the create or update method
         product = data['product']
         order = data['order']
-        if OrderDetail.objects.filter(product=product.id, order=order.id).exists():
-            raise ValidationError('That product already exists in the order')
+
+        # if editing (put/patch method will be called)
+        if self.instance:
+            if self.instance.product.id != product.id or self.instance.order.id != order.id:
+                raise ValidationError('You can only change the quantity')
+        else:
+            # create method will be called
+            # validates that the product doesn't already exists on another orderDetail of the same order
+            if OrderDetail.objects.filter(product=product.id, order=order.id).exists():
+                raise ValidationError('That product already exists in the order')
         return data
 
 
